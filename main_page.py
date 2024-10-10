@@ -398,7 +398,7 @@ if st.session_state["current_page"] == "CEMS Instrument Details":
 
     # Complete CEMS details for the current stack and navigate accordingly
     if st.button("Complete CEMS Details"):
-        if st.session_state["current_stack"] < st.session_state["num_stacks"]:
+        if st.session_state["current_stack"] <= st.session_state["num_stacks"]:
             st.session_state["current_stack"] += 1
             st.session_state["current_page"] = "Stack Details"
             st.success("Proceeding to the next stack.")
