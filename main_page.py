@@ -4,11 +4,17 @@ import random
 import uuid
 
 
+def get_database_connection():
+    # Include the database name directly in the connection string
+    conn = sqlitecloud.connect(
+        "sqlitecloud://cxup3m3knz.sqlite.cloud:8860/industry_reg?apikey=kLsCEWPNnKJe6SrMuMBCP2Ijpbf5yJwjLS8AlEiihAE"
+    )
+    return conn
+
+
 # Create/connect to the database and create tables if not exists
 def create_database_tables():
-    conn = sqlitecloud.connect(
-        "sqlitecloud://cxup3m3knz.sqlite.cloud:8860/industry_reg?apikey=yrnK6nZtEXuJXD1as8yd4jeNhDW7RFXajivQiGldivU"
-    )
+    conn = get_database_connection()
     c = conn.cursor()
     c.execute("""CREATE TABLE IF NOT EXISTS users (
                     user_id TEXT PRIMARY KEY,
@@ -74,11 +80,7 @@ def create_database_tables():
 # Add a new user record after OTP verification
 def add_user(phone_number):
     user_id = str(uuid.uuid4())
-    conn = sqlitecloud.connect(
-        "sqlitecloud://cxup3m3knz.sqlite.cloud:8860/industry_reg?apikey=yrnK6nZtEXuJXD1as8yd4jeNhDW7RFXajivQiGldivU"
-    )
-    # database="industry_reg"
-    # conn.execute(f"USE DATABASE")
+    conn = get_database_connection()
     c = conn.cursor()
     c.execute(
         "INSERT INTO users (user_id, phone_number) VALUES (?, ?)",
@@ -91,9 +93,7 @@ def add_user(phone_number):
 
 # Update user details after form submission
 def update_user_details(user_id, **details):
-    conn = sqlitecloud.connect(
-        "sqlitecloud://cxup3m3knz.sqlite.cloud:8860/industry_reg?apikey=yrnK6nZtEXuJXD1as8yd4jeNhDW7RFXajivQiGldivU"
-    )
+    conn = get_database_connection()
     c = conn.cursor()
     c.execute(
         """UPDATE users 
@@ -109,9 +109,7 @@ def update_user_details(user_id, **details):
 
 # Add stack details to the database
 def add_stack_details(user_id, **stack_details):
-    conn = sqlitecloud.connect(
-        "sqlitecloud://cxup3m3knz.sqlite.cloud:8860/industry_reg?apikey=yrnK6nZtEXuJXD1as8yd4jeNhDW7RFXajivQiGldivU"
-    )
+    conn = get_database_connection()
     c = conn.cursor()
     c.execute(
         """INSERT INTO stacks (
@@ -130,9 +128,7 @@ def add_stack_details(user_id, **stack_details):
 
 # Add CEMS instrument details to the database
 def add_cems_details(stack_id, **cems_details):
-    conn = sqlitecloud.connect(
-        "sqlitecloud://cxup3m3knz.sqlite.cloud:8860/industry_reg?apikey=yrnK6nZtEXuJXD1as8yd4jeNhDW7RFXajivQiGldivU"
-    )
+    conn = get_database_connection()
     c = conn.cursor()
     c.execute(
         """INSERT INTO cems_instruments (
