@@ -66,20 +66,6 @@ def add_user(phone_number):
     return user_id
 
 
-# Update user details after form submission
-def update_user_details(user_id, industry_category, state_ocmms_id, num_stacks):
-    conn = get_database_connection()
-    c = conn.cursor()
-    c.execute(
-        """UPDATE users 
-                 SET industry_category=?, state_ocmms_id=?, num_stacks=?
-                 WHERE user_id=?""",
-        (industry_category, state_ocmms_id, num_stacks, user_id),
-    )
-    conn.commit()
-    conn.close()
-
-
 # Page Initialization
 if "current_page" not in st.session_state:
     st.session_state["current_page"] = "Login"
@@ -99,13 +85,16 @@ def set_page(page_name):
 
 # Callback for OTP verification
 def verify_otp_callback(user_otp):
-    stored_otp = st.session_state.get("otp", "")
-    if user_otp == str(stored_otp):
+    stored_otp = str(st.session_state.get("otp", ""))
+    entered_otp = str(user_otp).strip()
+    st.write(f"Debug: Stored OTP (str): {stored_otp}")
+    st.write(f"Debug: Entered OTP (str): {entered_otp}")
+
+    if entered_otp == stored_otp:
         st.session_state["otp_verified"] = True
         user_id = add_user(st.session_state["phone_number"])
         st.session_state["user_id"] = user_id
         set_page("Industry Details")
-        st.experimental_rerun()  # Immediately update the page
     else:
         st.error("Incorrect OTP. Please try again.")
 
@@ -146,7 +135,7 @@ def industry_details_page():
     if st.button("Submit Industry Details", key="submit_industry"):
         update_user_details(user_id, industry_category, state_ocmms_id, num_stacks)
         st.success("Industry details submitted successfully!")
-        st.session_state["current_page"] = "Stack Details"  # Move to the next page
+        st.session_state["current_page"] = "Stack Details"
 
 
 # Render Pages Based on Session State
