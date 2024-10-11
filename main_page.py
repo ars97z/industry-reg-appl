@@ -60,11 +60,10 @@ def send_otp(phone_number):
 # Verify OTP
 def verify_otp(user_otp):
     if "otp" in st.session_state and user_otp == str(st.session_state["otp"]):
-        st.session_state["otp_verified"] = True
-        st.session_state["current_page"] = "Industry Details"
-        st.success("OTP Verified!")
         user_id = add_user(st.session_state["phone_number"])
         st.session_state["user_id"] = user_id
+        st.session_state["otp_verified"] = True
+        st.session_state["current_page"] = "Industry Details"
     else:
         st.error("Incorrect OTP. Please try again.")
 
@@ -88,6 +87,19 @@ def add_user(phone_number):
 
     conn.close()
     return user_id
+
+
+def update_user_details(user_id, industry_category, state_ocmms_id, num_stacks):
+    conn = get_database_connection()
+    c = conn.cursor()
+    c.execute(
+        """UPDATE users 
+                 SET industry_category=?, state_ocmms_id=?, num_stacks=?
+                 WHERE user_id=?""",
+        (industry_category, state_ocmms_id, num_stacks, user_id),
+    )
+    conn.commit()
+    conn.close()
 
 
 # Initialize session states
@@ -129,7 +141,8 @@ if st.session_state["current_page"] == "Login":
             verify_otp(user_otp)
 
 # Display Industry Details form if OTP is verified
-elif st.session_state["current_page"] == "Industry Details":
+# Display Industry Details form if OTP is verified
+if st.session_state["current_page"] == "Industry Details":
     st.header("Industry Basic Details")
     user_id = st.session_state.get("user_id", "")
 
@@ -138,23 +151,8 @@ elif st.session_state["current_page"] == "Industry Details":
     num_stacks = st.number_input("Number of Stacks", min_value=1)
 
     if st.button("Submit Industry Details", key="submit_industry"):
-        # Update user details in the database
         update_user_details(user_id, industry_category, state_ocmms_id, num_stacks)
         st.session_state["num_stacks"] = num_stacks
+        st.session_state["current_stack"] = 1
         st.session_state["current_page"] = "Stack Details"
         st.success("Industry details submitted successfully!")
-        st.experimental_rerun()  # Refresh to show the next page
-
-
-# Update user details after form submission
-def update_user_details(user_id, industry_category, state_ocmms_id, num_stacks):
-    conn = get_database_connection()
-    c = conn.cursor()
-    c.execute(
-        """UPDATE users 
-                 SET industry_category=?, state_ocmms_id=?, num_stacks=?
-                 WHERE user_id=?""",
-        (industry_category, state_ocmms_id, num_stacks, user_id),
-    )
-    conn.commit()
-    conn.close()
