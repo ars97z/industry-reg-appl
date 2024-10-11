@@ -99,11 +99,12 @@ def set_page(page_name):
 
 # OTP verification logic
 def verify_otp_callback(user_otp):
-    stored_otp = str(st.session_state.get("otp", ""))
+    # Ensure entered OTP is stripped and converted to a string
     entered_otp = str(user_otp).strip()
+    stored_otp = str(st.session_state.get("otp", "")).strip()
 
-    st.write(f"Debug: Stored OTP (str): {stored_otp}")
-    st.write(f"Debug: Entered OTP (str): {entered_otp}")
+    st.write(f"Debug: Stored OTP (str): '{stored_otp}'")
+    st.write(f"Debug: Entered OTP (str): '{entered_otp}'")
 
     if entered_otp == stored_otp:
         st.session_state["otp_verified"] = True
