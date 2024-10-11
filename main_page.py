@@ -64,6 +64,7 @@ def verify_otp(user_otp):
         st.session_state["user_id"] = user_id
         st.session_state["otp_verified"] = True
         st.session_state["current_page"] = "Industry Details"
+        st.experimental_rerun()
     else:
         st.error("Incorrect OTP. Please try again.")
 
@@ -140,7 +141,6 @@ if st.session_state["current_page"] == "Login":
         if st.button("Verify OTP", key="verify_otp"):
             verify_otp(user_otp)
 
-# Display Industry Details form if OTP is verified
 # Display Industry Details form if OTP is verified
 if st.session_state["current_page"] == "Industry Details":
     st.header("Industry Basic Details")
