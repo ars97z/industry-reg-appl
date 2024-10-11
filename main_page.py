@@ -12,7 +12,6 @@ def get_database_connection():
     return conn
 
 
-# Create/connect to the database and create tables if not exists
 def create_database_tables():
     conn = get_database_connection()
     c = conn.cursor()
@@ -93,7 +92,7 @@ def verify_otp_callback(user_otp):
         st.session_state["otp_verified"] = True
         user_id = add_user(st.session_state["phone_number"])
         st.session_state["user_id"] = user_id
-        set_page("Industry Details")
+        st.success("OTP Verified successfully!")
     else:
         st.error("Incorrect OTP. Please try again.")
 
@@ -108,7 +107,7 @@ def login_page():
     if st.button("Send OTP", key="send_otp"):
         if phone_number:
             otp = random.randint(1000, 9999)
-            st.session_state["otp"] = str(otp)
+            st.session_state["otp"] = otp
             st.session_state["otp_sent"] = True
             st.success(f"OTP sent to {phone_number} (for testing, the OTP is {otp})")
         else:
@@ -121,6 +120,10 @@ def login_page():
             on_click=verify_otp_callback,
             args=(user_otp,),
         )
+
+        if st.session_state.get("otp_verified"):
+            if st.button("Proceed to Industry Details"):
+                set_page("Industry Details")
 
 
 # Define the Industry Details Page
@@ -136,7 +139,9 @@ def industry_details_page():
         update_user_details(user_id, industry_category, state_ocmms_id, num_stacks)
         st.success("Industry details submitted successfully!")
         st.session_state["num_stacks"] = num_stacks
-        set_page("Stack Details")
+
+        if st.button("Proceed to Stack Details"):
+            st.session_state["current_page"] = "Stack Details"
 
 
 def update_user_details(user_id, industry_category, state_ocmms_id, num_stacks):
@@ -164,10 +169,7 @@ def stack_details_page():
     stack_condition = st.selectbox("Stack Condition", ["Good", "Needs Repair", "Poor"])
     stack_type = st.selectbox("Stack Type", ["Circular", "Rectangular"])
     cems_installed = st.selectbox("CEMS Installed", ["Yes", "No"])
-    parameters = st.multiselect(
-        "Select parameters (e.g., PM2.5, SOx, NOx)",
-        ["PM2.5", "SOx", "NOx", "CO2", "O2", "VOC"],
-    )
+    parameters = st.text_area("Parameters to be Monitored (e.g., PM, SOx, NOx)")
 
     if st.button("Submit Stack Details", key="submit_stack"):
         stack_id = add_stack(
@@ -176,33 +178,13 @@ def stack_details_page():
             stack_condition=stack_condition,
             stack_type=stack_type,
             cems_installed=cems_installed,
-            parameters=", ".join(parameters),
+            parameters=parameters,
         )
         st.session_state["current_stack_id"] = stack_id
-        set_page("CEMS Instrument Details")
         st.success("Stack details submitted successfully!")
 
-
-def add_stack(user_id, **stack_details):
-    conn = get_database_connection()
-    c = conn.cursor()
-    c.execute(
-        """INSERT INTO stacks (user_id, process_attached, stack_condition, 
-                               stack_type, cems_installed, parameters) 
-           VALUES (?, ?, ?, ?, ?, ?)""",
-        (
-            user_id,
-            stack_details.get("process_attached"),
-            stack_details.get("stack_condition"),
-            stack_details.get("stack_type"),
-            stack_details.get("cems_installed"),
-            stack_details.get("parameters"),
-        ),
-    )
-    stack_id = c.lastrowid
-    conn.commit()
-    conn.close()
-    return stack_id
+        if st.button("Proceed to CEMS Instrument Details"):
+            st.session_state["current_page"] = "CEMS Instrument Details"
 
 
 # Define the CEMS Instrument Details Page
@@ -211,16 +193,12 @@ def cems_instrument_details_page():
     st.subheader(
         f"CEMS Instrument Details for Stack {st.session_state['current_stack']}"
     )
-
     stack_id = st.session_state.get("current_stack_id", "")
     parameter = st.selectbox(
-        "Select parameter for this instrument",
-        ["PM2.5", "SOx", "NOx", "CO2", "O2", "VOC"],
+        "Select parameter for this instrument", ["PM2.5", "SOx", "NOx"]
     )
     measuring_range_low = st.number_input("Measuring Range Low", min_value=0.0)
-    measuring_range_high = st.number_input(
-        "Measuring Range High", min_value=measuring_range_low
-    )
+    measuring_range_high = st.number_input("Measuring Range High", min_value=0.0)
 
     if st.button("Submit CEMS Instrument Details", key="submit_cems"):
         add_cems_instrument(
@@ -233,27 +211,10 @@ def cems_instrument_details_page():
 
         if st.session_state["current_stack"] < st.session_state["num_stacks"]:
             st.session_state["current_stack"] += 1
-            set_page("Stack Details")
+            st.session_state["current_page"] = "Stack Details"
         else:
-            set_page("Registration Complete")
-
-
-def add_cems_instrument(stack_id, **cems_details):
-    conn = get_database_connection()
-    c = conn.cursor()
-    c.execute(
-        """INSERT INTO cems_instruments (stack_id, parameter, 
-                                         measuring_range_low, measuring_range_high) 
-           VALUES (?, ?, ?, ?)""",
-        (
-            stack_id,
-            cems_details.get("parameter"),
-            cems_details.get("measuring_range_low"),
-            cems_details.get("measuring_range_high"),
-        ),
-    )
-    conn.commit()
-    conn.close()
+            st.session_state["current_page"] = "Registration Complete"
+            st.success("All details submitted. Registration is complete.")
 
 
 # Define the Registration Complete Page
