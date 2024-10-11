@@ -4,7 +4,6 @@ import random
 import uuid
 
 
-# Establish connection with SQLiteCloud database
 def get_database_connection():
     conn = sqlitecloud.connect(
         "sqlitecloud://cxup3m3knz.sqlite.cloud:8860/industry_reg?apikey=ogQNaPUaDxZTJiTQEXlZGJB6zFAYqAkZdmzvJ3UpPrM"
@@ -12,7 +11,7 @@ def get_database_connection():
     return conn
 
 
-# Create tables if they do not exist
+# Create/connect to the database and create tables if not exists
 def create_database_tables():
     conn = get_database_connection()
     c = conn.cursor()
@@ -45,7 +44,7 @@ def create_database_tables():
     conn.close()
 
 
-# Add a new user or fetch existing user
+# Add a new user record or fetch existing user
 def add_user(phone_number):
     conn = get_database_connection()
     c = conn.cursor()
@@ -66,42 +65,30 @@ def add_user(phone_number):
     return user_id
 
 
-# Update user details after form submission
-def update_user_details(user_id, industry_category, state_ocmms_id, num_stacks):
-    conn = get_database_connection()
-    c = conn.cursor()
-    c.execute(
-        """UPDATE users 
-           SET industry_category=?, state_ocmms_id=?, num_stacks=?
-           WHERE user_id=?""",
-        (industry_category, state_ocmms_id, num_stacks, user_id),
-    )
-    conn.commit()
-    conn.close()
-
-
-# Initialize session states
+# Page Initialization
 if "current_page" not in st.session_state:
     st.session_state["current_page"] = "Login"
 if "otp_sent" not in st.session_state:
     st.session_state["otp_sent"] = False
 if "otp_verified" not in st.session_state:
     st.session_state["otp_verified"] = False
+if "entered_otp" not in st.session_state:
+    st.session_state["entered_otp"] = ""
 
-# Create database tables
+
+# Create the tables if not already present
 create_database_tables()
 
 
-# Function to change the page
+# Function to change the current page
 def set_page(page_name):
     st.session_state["current_page"] = page_name
 
 
-# OTP verification logic
-def verify_otp_callback(user_otp):
-    # Ensure entered OTP is stripped and converted to a string
-    entered_otp = str(user_otp).strip()
+# Callback for OTP verification
+def verify_otp_callback():
     stored_otp = str(st.session_state.get("otp", "")).strip()
+    entered_otp = str(st.session_state["entered_otp"]).strip()
 
     st.write(f"Debug: Stored OTP (str): '{stored_otp}'")
     st.write(f"Debug: Entered OTP (str): '{entered_otp}'")
@@ -115,29 +102,29 @@ def verify_otp_callback(user_otp):
         st.error("Incorrect OTP. Please try again.")
 
 
-# Define the login page
-def login_page():
+# Login Page
+if st.session_state["current_page"] == "Login":
     st.header("Welcome! Please log in or sign up to continue.")
     phone_number = st.text_input("Enter your phone number", value="", max_chars=10)
     st.session_state["phone_number"] = phone_number
 
-    if st.button("Send OTP"):
+    if st.button("Send OTP", key="send_otp"):
         if phone_number:
             otp = random.randint(1000, 9999)
             st.session_state["otp"] = otp
             st.session_state["otp_sent"] = True
-            st.success(f"OTP sent to {phone_number} (For testing, the OTP is {otp})")
+            st.success(f"OTP sent to {phone_number} (for testing, the OTP is {otp})")
         else:
             st.error("Please enter a valid phone number.")
 
     if st.session_state["otp_sent"]:
-        user_otp = st.text_input("Enter the OTP you received", max_chars=4)
-        st.button(
-            "Verify OTP",
-            on_click=verify_otp_callback,
-            args=(user_otp,),
+        st.text_input(
+            "Enter the OTP you received",
+            max_chars=4,
+            key="entered_otp",
+            on_change=verify_otp_callback,
         )
-        st.write(f"Debug: OTP entered is {user_otp}")
+        st.write(f"Debug: OTP entered is {st.session_state['entered_otp']}")
         st.write(f"Debug: OTP stored is {st.session_state.get('otp')}")
         st.write(f"Debug: OTP sent status is {st.session_state['otp_sent']}")
 
@@ -150,14 +137,15 @@ def industry_details_page():
     num_stacks = st.number_input("Number of Stacks", min_value=1, step=1)
     user_id = st.session_state.get("user_id", "")
 
-    if st.button("Submit Industry Details"):
+    if st.button("Submit Industry Details", key="submit_industry"):
         update_user_details(user_id, industry_category, state_ocmms_id, num_stacks)
         st.success("Industry details submitted successfully!")
         st.session_state["current_page"] = "Stack Details"
 
 
 # Render Pages Based on Session State
-if st.session_state["current_page"] == "Login":
-    login_page()
-elif st.session_state["current_page"] == "Industry Details":
+if (
+    st.session_state["current_page"] == "Industry Details"
+    and st.session_state["otp_verified"]
+):
     industry_details_page()
