@@ -150,57 +150,29 @@ if st.session_state["current_page"] == "Login":
             else:
                 st.error("Incorrect OTP. Please try again.")
 
-# Industry Details Page
-if (
-    st.session_state["current_page"] == "Industry Details"
-    and st.session_state["otp_verified"]
-):
+# Display Industry Details form if OTP is verified
+if st.session_state["current_page"] == "Industry Details":
     st.header("Industry Basic Details")
-    user_id = st.session_state["user_id"]
+    user_id = st.session_state.get("user_id", "")
 
     industry_category = st.text_input("Industry Category")
     state_ocmms_id = st.text_input("State OCMMS ID")
     num_stacks = st.number_input("Number of Stacks", min_value=1)
 
     if st.button("Submit Industry Details", key="submit_industry"):
-        update_user_details(user_id, industry_category, state_ocmms_id, num_stacks)
+        # Update user details in the database
+        conn = get_database_connection()
+        c = conn.cursor()
+        c.execute(
+            """
+            UPDATE users SET industry_category = ?, state_ocmms_id = ?, num_stacks = ? WHERE user_id = ?
+        """,
+            (industry_category, state_ocmms_id, num_stacks, user_id),
+        )
+        conn.commit()
+        conn.close()
+
         st.session_state["num_stacks"] = num_stacks
         st.session_state["current_stack"] = 1
         st.session_state["current_page"] = "Stack Details"
         st.success("Industry details submitted successfully!")
-
-# Stack Details Page
-if (
-    st.session_state["current_page"] == "Stack Details"
-    and st.session_state["submit_industry"]
-):
-    st.header(
-        f"Stack Details - Stack {st.session_state['current_stack']} of {st.session_state['num_stacks']}"
-    )
-    user_id = st.session_state["user_id"]
-
-    process_attached = st.text_input("Process Attached")
-    stack_condition = st.selectbox("Stack Condition", ["Wet", "Dry"])
-    stack_type = st.selectbox("Stack Type", ["Circular", "Rectangular"])
-    cems_installed = st.selectbox("CEMS Installed?", ["Yes", "No"])
-    parameters = st.text_area("Parameters to Monitor")
-
-    if st.button(
-        "Submit Stack Details", key=f"submit_stack_{st.session_state['current_stack']}"
-    ):
-        # Add stack details here...
-        st.session_state["submit_stack"] = True
-        if st.session_state["current_stack"] < st.session_state["num_stacks"]:
-            st.session_state["current_stack"] += 1
-        else:
-            st.session_state["current_page"] = "Registration Complete"
-        st.success("Stack details submitted successfully!")
-
-# Registration Complete Page
-if (
-    st.session_state["current_page"] == "Registration Complete"
-    and st.session_state["submit_stack"]
-):
-    st.header("Registration Complete")
-    st.success("Thank you for registering. Your details have been successfully saved.")
-    st.info("You can now exit or start a new registration if needed.")
