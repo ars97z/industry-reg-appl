@@ -38,7 +38,7 @@ def create_database_tables():
                     parameter TEXT,
                     measuring_range_low REAL,
                     measuring_range_high REAL,
-                    communication_protocol TEXT,
+        #             communication_protocol TEXT,
                     FOREIGN KEY (stack_id) REFERENCES stacks (stack_id)
                 )""")
     conn.commit()
@@ -85,8 +85,11 @@ def set_page(page_name):
 
 # Callback for OTP verification
 def verify_otp_callback(user_otp):
+    # Manually set the OTP entered to session state for consistency
+    st.session_state["entered_otp"] = str(user_otp).strip()
     stored_otp = str(st.session_state.get("otp", ""))
-    entered_otp = str(user_otp).strip()
+    entered_otp = st.session_state["entered_otp"]
+
     st.write(f"Debug: Stored OTP (str): {stored_otp}")
     st.write(f"Debug: Entered OTP (str): {entered_otp}")
 
@@ -99,29 +102,17 @@ def verify_otp_callback(user_otp):
         st.error("Incorrect OTP. Please try again.")
 
 
-# Define the Login Page
-def login_page():
-    st.header("Welcome! Please log in or sign up to continue.")
-    phone_number = st.text_input("Enter your phone number", max_chars=10)
-    st.session_state["phone_number"] = phone_number
-
-    if st.button("Send OTP", key="send_otp") and phone_number:
-        otp = random.randint(1000, 9999)
-        st.session_state["otp"] = otp
-        st.session_state["otp_sent"] = True
-        st.success(f"OTP sent to {phone_number} (for testing, the OTP is {otp})")
-        st.write(f"Debug: OTP stored is {otp}")
-
-    if st.session_state["otp_sent"]:
-        user_otp = st.text_input("Enter the OTP you received", max_chars=4)
-        st.button(
-            "Verify OTP",
-            on_click=verify_otp_callback,
-            args=(user_otp,),
-        )
-        st.write(f"Debug: OTP entered is {user_otp}")
-        st.write(f"Debug: OTP stored is {st.session_state.get('otp')}")
-        st.write(f"Debug: OTP sent status is {st.session_state['otp_sent']}")
+# Update the login page button to use this new callback
+if st.session_state["otp_sent"]:
+    user_otp = st.text_input("Enter the OTP you received", max_chars=4)
+    st.button(
+        "Verify OTP",
+        on_click=verify_otp_callback,
+        args=(user_otp,),
+    )
+    st.write(f"Debug: OTP entered is {user_otp}")
+    st.write(f"Debug: OTP stored is {st.session_state.get('otp')}")
+    st.write(f"Debug: OTP sent status is {st.session_state['otp_sent']}")
 
 
 # Define the Industry Details Page
