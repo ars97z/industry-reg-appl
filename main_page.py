@@ -98,12 +98,14 @@ def set_page(page_name):
 
 
 # Callback for OTP verification
-def verify_otp_callback(user_otp, correct_otp, phone_number):
-    if user_otp == str(correct_otp):
+def verify_otp_callback(user_otp):
+    stored_otp = st.session_state.get("otp", "")
+    if user_otp == str(stored_otp):
         st.session_state["otp_verified"] = True
-        user_id = add_user(phone_number)
+        user_id = add_user(st.session_state["phone_number"])
         st.session_state["user_id"] = user_id
         set_page("Industry Details")
+        st.experimental_rerun()  # Immediately update the page
     else:
         st.error("Incorrect OTP. Please try again.")
 
@@ -119,14 +121,18 @@ def login_page():
         st.session_state["otp"] = otp
         st.session_state["otp_sent"] = True
         st.success(f"OTP sent to {phone_number} (for testing, the OTP is {otp})")
+        st.write(f"Debug: OTP stored is {otp}")
 
     if st.session_state["otp_sent"]:
         user_otp = st.text_input("Enter the OTP you received", max_chars=4)
         st.button(
             "Verify OTP",
             on_click=verify_otp_callback,
-            args=(user_otp, st.session_state["otp"], phone_number),
+            args=(user_otp,),
         )
+        st.write(f"Debug: OTP entered is {user_otp}")
+        st.write(f"Debug: OTP stored is {st.session_state.get('otp')}")
+        st.write(f"Debug: OTP sent status is {st.session_state['otp_sent']}")
 
 
 # Define the Industry Details Page
