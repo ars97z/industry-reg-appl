@@ -64,7 +64,6 @@ def verify_otp(user_otp):
         st.session_state["user_id"] = user_id
         st.session_state["otp_verified"] = True
         st.session_state["current_page"] = "Industry Details"
-        st.experimental_rerun()
     else:
         st.error("Incorrect OTP. Please try again.")
 
@@ -155,4 +154,3 @@ if st.session_state["current_page"] == "Industry Details":
         st.session_state["num_stacks"] = num_stacks
         st.session_state["current_stack"] = 1
         st.session_state["current_page"] = "Stack Details"
-        st.success("Industry details submitted successfully!")
