@@ -71,14 +71,21 @@ def verify_otp(user_otp):
 
 # Add a new user record after OTP verification
 def add_user(phone_number):
-    user_id = str(uuid.uuid4())
     conn = get_database_connection()
     c = conn.cursor()
-    c.execute(
-        "INSERT INTO users (user_id, phone_number) VALUES (?, ?)",
-        (user_id, phone_number),
-    )
-    conn.commit()
+    c.execute("SELECT user_id FROM users WHERE phone_number = ?", (phone_number,))
+    existing_user = c.fetchone()
+
+    if existing_user:
+        user_id = existing_user[0]  # Retrieve the existing user_id
+    else:
+        user_id = str(uuid.uuid4())
+        c.execute(
+            "INSERT INTO users (user_id, phone_number) VALUES (?, ?)",
+            (user_id, phone_number),
+        )
+        conn.commit()
+
     conn.close()
     return user_id
 
