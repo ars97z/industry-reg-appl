@@ -48,21 +48,35 @@ def create_database_tables():
 # Initialize the database tables
 # create_database_tables()
 
+# Initialize session states
+if "current_page" not in st.session_state:
+    st.session_state["current_page"] = "Login"
+if "otp_sent" not in st.session_state:
+    st.session_state["otp_sent"] = False
+if "otp_verified" not in st.session_state:
+    st.session_state["otp_verified"] = False
+if "submit_industry" not in st.session_state:
+    st.session_state["submit_industry"] = False
+if "submit_stack" not in st.session_state:
+    st.session_state["submit_stack"] = False
 
-# Simulate OTP sending
-def send_otp(phone_number):
+# Create database tables
+create_database_tables()
+
+
+# Function to handle OTP sending
+def send_otp():
     otp = random.randint(1000, 9999)
     st.session_state["otp"] = otp
     st.session_state["otp_sent"] = True
-    st.success(f"OTP sent to {phone_number} (for testing, the OTP is {otp})")
+    st.success(f"OTP sent (for testing, the OTP is {otp})")
 
 
-# Verify OTP
+# Function to handle OTP verification and proceed to next page
 def verify_otp(user_otp):
-    if "otp" in st.session_state and user_otp == str(st.session_state["otp"]):
+    if user_otp == str(st.session_state["otp"]):
         user_id = add_user(st.session_state["phone_number"])
         st.session_state["user_id"] = user_id
-        st.session_state["otp_verified"] = True
         st.session_state["current_page"] = "Industry Details"
     else:
         st.error("Incorrect OTP. Please try again.")
@@ -76,7 +90,7 @@ def add_user(phone_number):
     existing_user = c.fetchone()
 
     if existing_user:
-        user_id = existing_user[0]  # Retrieve the existing user_id
+        user_id = existing_user[0]
     else:
         user_id = str(uuid.uuid4())
         c.execute(
@@ -102,59 +116,31 @@ def update_user_details(user_id, industry_category, state_ocmms_id, num_stacks):
     conn.close()
 
 
-# Initialize session states
-if "current_page" not in st.session_state:
-    st.session_state["current_page"] = "Login"
-if "otp_sent" not in st.session_state:
-    st.session_state["otp_sent"] = False
-if "otp_verified" not in st.session_state:
-    st.session_state["otp_verified"] = False
-if "submit_industry" not in st.session_state:
-    st.session_state["submit_industry"] = False
-if "submit_stack" not in st.session_state:
-    st.session_state["submit_stack"] = False
-
-# Create database tables
-create_database_tables()
-
-# Create a placeholder for dynamic content
-placeholder = st.empty()
-
 # Streamlit App - Navigation and Pages
-with placeholder.container():
-    st.title("🌿 Industry Registration Portal")
+st.title("🌿 Industry Registration Portal")
 
-    # Login Page
-    if st.session_state["current_page"] == "Login":
-        st.header("Welcome! Please log in or sign up to continue.")
-        phone_number = st.text_input("Enter your phone number", value="", max_chars=10)
-        st.session_state["phone_number"] = phone_number
+# Login Page
+if st.session_state["current_page"] == "Login":
+    st.header("Welcome! Please log in or sign up to continue.")
+    phone_number = st.text_input("Enter your phone number", value="", max_chars=10)
+    st.session_state["phone_number"] = phone_number
 
-        if st.button("Send OTP", key="send_otp"):
-            if phone_number:
-                send_otp(phone_number)
-            else:
-                st.error("Please enter a valid phone number.")
+    if st.button("Send OTP", key="send_otp", on_click=send_otp):
+        st.success(f"OTP sent to {phone_number}")
 
-        if st.session_state["otp_sent"]:
-            user_otp = st.text_input(
-                "Enter the OTP you received", value="", max_chars=4
-            )
-            if st.button("Verify OTP", key="verify_otp"):
-                verify_otp(user_otp)
+    if st.session_state["otp_sent"]:
+        user_otp = st.text_input("Enter the OTP you received", value="", max_chars=4)
+        st.button("Verify OTP", key="verify_otp", on_click=verify_otp, args=(user_otp,))
 
-    # Display Industry Details form if OTP is verified
-    if st.session_state["current_page"] == "Industry Details":
-        st.header("Industry Basic Details")
-        user_id = st.session_state.get("user_id", "")
+# Display Industry Details form if OTP is verified
+if st.session_state["current_page"] == "Industry Details":
+    st.header("Industry Basic Details")
+    user_id = st.session_state.get("user_id", "")
+    industry_category = st.text_input("Industry Category")
+    state_ocmms_id = st.text_input("State OCMMS ID")
+    num_stacks = st.number_input("Number of Stacks", min_value=1)
 
-        industry_category = st.text_input("Industry Category")
-        state_ocmms_id = st.text_input("State OCMMS ID")
-        num_stacks = st.number_input("Number of Stacks", min_value=1)
-
-        if st.button("Submit Industry Details", key="submit_industry"):
-            update_user_details(user_id, industry_category, state_ocmms_id, num_stacks)
-            st.session_state["num_stacks"] = num_stacks
-            st.session_state["current_stack"] = 1
-            st.session_state["current_page"] = "Stack Details"
-            st.success("Industry details submitted successfully!")
+    if st.button("Submit Industry Details", key="submit_industry"):
+        update_user_details(user_id, industry_category, state_ocmms_id, num_stacks)
+        st.session_state["current_page"] = "Stack Details"
+        st.success("Industry details submitted successfully!")
