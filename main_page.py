@@ -85,14 +85,14 @@ def set_page(page_name):
 
 
 # Callback for OTP verification
-def verify_otp_callback(user_otp):
-    entered_otp = str(user_otp).strip()
+def verify_otp_callback():
+    user_otp = st.session_state.get("user_otp", "").strip()
     stored_otp = str(st.session_state.get("otp", ""))
-    if entered_otp == stored_otp:
+    if user_otp == stored_otp:
         st.session_state["otp_verified"] = True
         user_id = add_user(st.session_state["phone_number"])
         st.session_state["user_id"] = user_id
-        set_page("Industry Details")
+        st.session_state["current_page"] = "Industry Details"
     else:
         st.error("Incorrect OTP. Please try again.")
 
@@ -104,6 +104,7 @@ def login_page():
     phone_number = st.text_input("Enter your phone number", value="", max_chars=10)
     st.session_state["phone_number"] = phone_number
 
+    # Send OTP when the user clicks "Send OTP"
     if st.button("Send OTP", key="send_otp"):
         if phone_number:
             otp = random.randint(1000, 9999)
@@ -113,12 +114,12 @@ def login_page():
         else:
             st.error("Please enter a valid phone number.")
 
-    if st.session_state["otp_sent"]:
-        user_otp = st.text_input("Enter the OTP you received", max_chars=4)
+    # Display OTP input field only if OTP is sent but not verified yet
+    if st.session_state["otp_sent"] and not st.session_state["otp_verified"]:
+        st.text_input("Enter the OTP you received", key="user_otp", max_chars=4)
         st.button(
             "Verify OTP",
             on_click=verify_otp_callback,
-            args=(user_otp,),
         )
 
 
@@ -131,11 +132,12 @@ def industry_details_page():
     num_stacks = st.number_input("Number of Stacks", min_value=1, step=1)
     user_id = st.session_state.get("user_id", "")
 
-    if st.button("Submit Industry Details", key="submit_industry"):
+    def submit_industry_details():
         update_user_details(user_id, industry_category, state_ocmms_id, num_stacks)
-        st.success("Industry details submitted successfully!")
         st.session_state["num_stacks"] = num_stacks
         st.session_state["current_page"] = "Stack Details"
+
+    st.button("Submit Industry Details", on_click=submit_industry_details)
 
 
 def update_user_details(user_id, industry_category, state_ocmms_id, num_stacks):
@@ -165,7 +167,7 @@ def stack_details_page():
     cems_installed = st.selectbox("CEMS Installed", ["Yes", "No"])
     parameters = st.text_area("Parameters to be Monitored (e.g., PM, SOx, NOx)")
 
-    if st.button("Submit Stack Details", key="submit_stack"):
+    def submit_stack_details():
         stack_id = add_stack(
             user_id=user_id,
             process_attached=process_attached,
@@ -176,7 +178,8 @@ def stack_details_page():
         )
         st.session_state["current_stack_id"] = stack_id
         st.session_state["current_page"] = "CEMS Instrument Details"
-        st.success("Stack details submitted successfully!")
+
+    st.button("Submit Stack Details", on_click=submit_stack_details)
 
 
 def add_stack(user_id, **stack_details):
@@ -205,7 +208,7 @@ def add_stack(user_id, **stack_details):
 def cems_instrument_details_page():
     st.title("🌿 Industry Registration Portal")
     st.subheader(
-        f"CEMS Instrument Details for Stack {st.session_state['current_stack']}"
+        f"CEMS Instrument Details for Stack {st.session_state['current_stack']} of {st.session_state['num_stacks']}"
     )
 
     stack_id = st.session_state.get("current_stack_id", "")
@@ -213,22 +216,24 @@ def cems_instrument_details_page():
     measuring_range_low = st.number_input("Measuring Range Low", min_value=0.0)
     measuring_range_high = st.number_input("Measuring Range High", min_value=0.0)
 
-    if st.button("Submit CEMS Instrument Details", key="submit_cems"):
+    def submit_cems_instrument_details():
         add_cems_instrument(
             stack_id=stack_id,
             parameter=parameter,
             measuring_range_low=measuring_range_low,
             measuring_range_high=measuring_range_high,
         )
-        st.success("CEMS instrument details submitted successfully!")
 
-        # Move to the next stack or complete registration
-        if st.session_state["current_stack"] < st.session_state["num_stacks"]:
-            st.session_state["current_stack"] += 1
+        # Increment the current stack count
+        st.session_state["current_stack"] += 1
+
+        # If there are more stacks, go back to "Stack Details" for the next stack
+        if st.session_state["current_stack"] <= st.session_state["num_stacks"]:
             st.session_state["current_page"] = "Stack Details"
         else:
             st.session_state["current_page"] = "Registration Complete"
-            st.success("All details submitted. Registration is complete.")
+
+    st.button("Submit CEMS Instrument Details", on_click=submit_cems_instrument_details)
 
 
 def add_cems_instrument(stack_id, **cems_details):
@@ -253,7 +258,7 @@ def add_cems_instrument(stack_id, **cems_details):
 def registration_complete_page():
     st.title("🌿 Industry Registration Portal")
     st.subheader("Registration Complete")
-    st.success("Thank you for registering. Your details have been successfully saved.")
+    st.write("Thank you for registering. Your details have been successfully saved.")
 
 
 # Render Pages Based on Session State
@@ -264,9 +269,15 @@ elif (
     and st.session_state["otp_verified"]
 ):
     industry_details_page()
-elif st.session_state["current_page"] == "Stack Details":
+elif (
+    st.session_state["current_page"] == "Stack Details"
+    and st.session_state["current_stack"] <= st.session_state["num_stacks"]
+):
     stack_details_page()
-elif st.session_state["current_page"] == "CEMS Instrument Details":
+elif (
+    st.session_state["current_page"] == "CEMS Instrument Details"
+    and st.session_state["current_stack"] <= st.session_state["num_stacks"]
+):
     cems_instrument_details_page()
 elif st.session_state["current_page"] == "Registration Complete":
     registration_complete_page()
