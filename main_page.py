@@ -7,7 +7,7 @@ import uuid
 # Establish connection with SQLiteCloud database
 def get_database_connection():
     conn = sqlitecloud.connect(
-        "sqlitecloud://cxup3m3knz.sqlite.cloud:8860/industry_reg?apikey=YOUR_API_KEY"
+        "sqlitecloud://cxup3m3knz.sqlite.cloud:8860/industry_reg?apikey=ogQNaPUaDxZTJiTQEXlZGJB6zFAYqAkZdmzvJ3UpPrM"
     )
     return conn
 
