@@ -64,12 +64,11 @@ if "submit_stack" not in st.session_state:
 create_database_tables()
 
 
-# Function to handle OTP sending
 def send_otp():
     otp = random.randint(1000, 9999)
     st.session_state["otp"] = otp
     st.session_state["otp_sent"] = True
-    st.success(f"OTP sent (for testing, the OTP is {otp})")
+    st.write(f"Debug: Generated OTP is {otp}")  # For debugging purposes
 
 
 # Function to handle OTP verification and proceed to next page
@@ -119,7 +118,6 @@ def update_user_details(user_id, industry_category, state_ocmms_id, num_stacks):
 # Streamlit App - Navigation and Pages
 st.title("🌿 Industry Registration Portal")
 
-# Login Page
 if st.session_state["current_page"] == "Login":
     st.header("Welcome! Please log in or sign up to continue.")
     phone_number = st.text_input("Enter your phone number", value="", max_chars=10)
@@ -130,9 +128,9 @@ if st.session_state["current_page"] == "Login":
 
     if st.session_state["otp_sent"]:
         user_otp = st.text_input("Enter the OTP you received", value="", max_chars=4)
-        st.button("Verify OTP", key="verify_otp", on_click=verify_otp, args=(user_otp,))
+        if st.button("Verify OTP", key="verify_otp"):
+            verify_otp(user_otp)
 
-# Display Industry Details form if OTP is verified
 if st.session_state["current_page"] == "Industry Details":
     st.header("Industry Basic Details")
     user_id = st.session_state.get("user_id", "")
@@ -144,3 +142,8 @@ if st.session_state["current_page"] == "Industry Details":
         update_user_details(user_id, industry_category, state_ocmms_id, num_stacks)
         st.session_state["current_page"] = "Stack Details"
         st.success("Industry details submitted successfully!")
+
+# Debugging section to check the current session state values
+st.write(f"Debug: Current page is {st.session_state['current_page']}")
+st.write(f"Debug: OTP stored is {st.session_state.get('otp', 'Not set')}")
+st.write(f"Debug: OTP sent status is {st.session_state['otp_sent']}")
