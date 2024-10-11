@@ -61,10 +61,10 @@ def send_otp(phone_number):
 def verify_otp(user_otp):
     if "otp" in st.session_state and user_otp == str(st.session_state["otp"]):
         st.session_state["otp_verified"] = True
+        st.session_state["current_page"] = "Industry Details"
         st.success("OTP Verified!")
         user_id = add_user(st.session_state["phone_number"])
         st.session_state["user_id"] = user_id
-        st.session_state["current_page"] = "Industry Details"
     else:
         st.error("Incorrect OTP. Please try again.")
 
@@ -111,24 +111,19 @@ create_database_tables()
 # Streamlit App - Navigation and Pages
 st.title("🌿 Industry Registration Portal")
 
-# Display pages based on the current page state
+# Inside the Streamlit app logic, in the part where the OTP is verified
 if st.session_state["current_page"] == "Login":
     st.header("Welcome! Please log in or sign up to continue.")
     phone_number = st.text_input("Enter your phone number", value="", max_chars=10)
     st.session_state["phone_number"] = phone_number
 
-    if (
-        st.button("Send OTP", key="send_otp")
-        and not st.session_state["otp_verified_once"]
-    ):
+    if st.button("Send OTP", key="send_otp"):
         if phone_number:
-            st.session_state["otp"] = random.randint(1000, 9999)
-            st.session_state["otp_sent"] = True
-            st.success(
-                f"OTP sent to {phone_number} (for testing, the OTP is {st.session_state['otp']})"
-            )
+            send_otp(phone_number)
+        else:
+            st.error("Please enter a valid phone number.")
 
-    if st.session_state["otp_sent"] and not st.session_state["otp_verified_once"]:
+    if st.session_state["otp_sent"]:
         user_otp = st.text_input("Enter the OTP you received", value="", max_chars=4)
         if st.button("Verify OTP", key="verify_otp"):
             verify_otp(user_otp)
