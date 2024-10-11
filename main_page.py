@@ -44,6 +44,7 @@ def create_database_tables():
     conn.close()
 
 
+# Add a new user record or fetch existing user
 def add_user(phone_number):
     conn = get_database_connection()
     c = conn.cursor()
@@ -64,19 +65,6 @@ def add_user(phone_number):
     return user_id
 
 
-def update_user_details(user_id, industry_category, state_ocmms_id, num_stacks):
-    conn = get_database_connection()
-    c = conn.cursor()
-    c.execute(
-        """UPDATE users 
-           SET industry_category=?, state_ocmms_id=?, num_stacks=?
-           WHERE user_id=?""",
-        (industry_category, state_ocmms_id, num_stacks, user_id),
-    )
-    conn.commit()
-    conn.close()
-
-
 # Page Initialization
 if "current_page" not in st.session_state:
     st.session_state["current_page"] = "Login"
@@ -84,8 +72,8 @@ if "otp_sent" not in st.session_state:
     st.session_state["otp_sent"] = False
 if "otp_verified" not in st.session_state:
     st.session_state["otp_verified"] = False
-if "entered_otp" not in st.session_state:
-    st.session_state["entered_otp"] = ""
+if "current_stack" not in st.session_state:
+    st.session_state["current_stack"] = 1
 
 # Create the tables if not already present
 create_database_tables()
@@ -97,10 +85,9 @@ def set_page(page_name):
 
 
 # Callback for OTP verification
-def verify_otp_callback():
-    stored_otp = str(st.session_state.get("otp", "")).strip()
-    entered_otp = str(st.session_state["entered_otp"]).strip()
-
+def verify_otp_callback(user_otp):
+    entered_otp = str(user_otp).strip()
+    stored_otp = str(st.session_state.get("otp", ""))
     if entered_otp == stored_otp:
         st.session_state["otp_verified"] = True
         user_id = add_user(st.session_state["phone_number"])
@@ -110,10 +97,10 @@ def verify_otp_callback():
         st.error("Incorrect OTP. Please try again.")
 
 
-# Login Page
+# Define the Login Page
 def login_page():
     st.title("🌿 Industry Registration Portal")
-    st.subheader("Welcome! Please log in or sign up to continue.")
+    st.header("Welcome! Please log in or sign up to continue.")
     phone_number = st.text_input("Enter your phone number", value="", max_chars=10)
     st.session_state["phone_number"] = phone_number
 
@@ -127,18 +114,18 @@ def login_page():
             st.error("Please enter a valid phone number.")
 
     if st.session_state["otp_sent"]:
-        st.text_input(
-            "Enter the OTP you received",
-            max_chars=4,
-            key="entered_otp",
-            on_change=verify_otp_callback,
+        user_otp = st.text_input("Enter the OTP you received", max_chars=4)
+        st.button(
+            "Verify OTP",
+            on_click=verify_otp_callback,
+            args=(user_otp,),
         )
 
 
 # Define the Industry Details Page
 def industry_details_page():
     st.title("🌿 Industry Registration Portal")
-    st.subheader("Industry Basic Details")
+    st.header("Industry Basic Details")
     industry_category = st.text_input("Industry Category")
     state_ocmms_id = st.text_input("State OCMMS ID")
     num_stacks = st.number_input("Number of Stacks", min_value=1, step=1)
@@ -147,7 +134,126 @@ def industry_details_page():
     if st.button("Submit Industry Details", key="submit_industry"):
         update_user_details(user_id, industry_category, state_ocmms_id, num_stacks)
         st.success("Industry details submitted successfully!")
+        st.session_state["num_stacks"] = num_stacks
         st.session_state["current_page"] = "Stack Details"
+
+
+def update_user_details(user_id, industry_category, state_ocmms_id, num_stacks):
+    conn = get_database_connection()
+    c = conn.cursor()
+    c.execute(
+        """UPDATE users 
+           SET industry_category=?, state_ocmms_id=?, num_stacks=?
+           WHERE user_id=?""",
+        (industry_category, state_ocmms_id, num_stacks, user_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+# Define the Stack Details Page
+def stack_details_page():
+    st.title("🌿 Industry Registration Portal")
+    st.subheader(
+        f"Stack Details - Stack {st.session_state['current_stack']} of {st.session_state['num_stacks']}"
+    )
+    user_id = st.session_state.get("user_id", "")
+
+    process_attached = st.text_input("Process Attached")
+    stack_condition = st.selectbox("Stack Condition", ["Good", "Needs Repair", "Poor"])
+    stack_type = st.selectbox("Stack Type", ["Circular", "Rectangular"])
+    cems_installed = st.selectbox("CEMS Installed", ["Yes", "No"])
+    parameters = st.text_area("Parameters to be Monitored (e.g., PM, SOx, NOx)")
+
+    if st.button("Submit Stack Details", key="submit_stack"):
+        stack_id = add_stack(
+            user_id=user_id,
+            process_attached=process_attached,
+            stack_condition=stack_condition,
+            stack_type=stack_type,
+            cems_installed=cems_installed,
+            parameters=parameters,
+        )
+        st.session_state["current_stack_id"] = stack_id
+        st.session_state["current_page"] = "CEMS Instrument Details"
+        st.success("Stack details submitted successfully!")
+
+
+def add_stack(user_id, **stack_details):
+    conn = get_database_connection()
+    c = conn.cursor()
+    c.execute(
+        """INSERT INTO stacks (user_id, process_attached, stack_condition, 
+                               stack_type, cems_installed, parameters) 
+           VALUES (?, ?, ?, ?, ?, ?)""",
+        (
+            user_id,
+            stack_details.get("process_attached"),
+            stack_details.get("stack_condition"),
+            stack_details.get("stack_type"),
+            stack_details.get("cems_installed"),
+            stack_details.get("parameters"),
+        ),
+    )
+    stack_id = c.lastrowid
+    conn.commit()
+    conn.close()
+    return stack_id
+
+
+# Define the CEMS Instrument Details Page
+def cems_instrument_details_page():
+    st.title("🌿 Industry Registration Portal")
+    st.subheader(
+        f"CEMS Instrument Details for Stack {st.session_state['current_stack']}"
+    )
+
+    stack_id = st.session_state.get("current_stack_id", "")
+    parameter = st.text_input("Enter parameter for this instrument (e.g., PM2.5, SOx)")
+    measuring_range_low = st.number_input("Measuring Range Low", min_value=0.0)
+    measuring_range_high = st.number_input("Measuring Range High", min_value=0.0)
+
+    if st.button("Submit CEMS Instrument Details", key="submit_cems"):
+        add_cems_instrument(
+            stack_id=stack_id,
+            parameter=parameter,
+            measuring_range_low=measuring_range_low,
+            measuring_range_high=measuring_range_high,
+        )
+        st.success("CEMS instrument details submitted successfully!")
+
+        # Move to the next stack or complete registration
+        if st.session_state["current_stack"] < st.session_state["num_stacks"]:
+            st.session_state["current_stack"] += 1
+            st.session_state["current_page"] = "Stack Details"
+        else:
+            st.session_state["current_page"] = "Registration Complete"
+            st.success("All details submitted. Registration is complete.")
+
+
+def add_cems_instrument(stack_id, **cems_details):
+    conn = get_database_connection()
+    c = conn.cursor()
+    c.execute(
+        """INSERT INTO cems_instruments (stack_id, parameter, 
+                                         measuring_range_low, measuring_range_high) 
+           VALUES (?, ?, ?, ?)""",
+        (
+            stack_id,
+            cems_details.get("parameter"),
+            cems_details.get("measuring_range_low"),
+            cems_details.get("measuring_range_high"),
+        ),
+    )
+    conn.commit()
+    conn.close()
+
+
+# Define the Registration Complete Page
+def registration_complete_page():
+    st.title("🌿 Industry Registration Portal")
+    st.subheader("Registration Complete")
+    st.success("Thank you for registering. Your details have been successfully saved.")
 
 
 # Render Pages Based on Session State
@@ -158,3 +264,9 @@ elif (
     and st.session_state["otp_verified"]
 ):
     industry_details_page()
+elif st.session_state["current_page"] == "Stack Details":
+    stack_details_page()
+elif st.session_state["current_page"] == "CEMS Instrument Details":
+    cems_instrument_details_page()
+elif st.session_state["current_page"] == "Registration Complete":
+    registration_complete_page()
