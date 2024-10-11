@@ -135,7 +135,7 @@ def industry_details_page():
         update_user_details(user_id, industry_category, state_ocmms_id, num_stacks)
         st.success("Industry details submitted successfully!")
         st.session_state["num_stacks"] = num_stacks
-        set_page("Stack Details")
+        st.session_state["current_page"] = "Stack Details"
 
 
 def update_user_details(user_id, industry_category, state_ocmms_id, num_stacks):
@@ -175,8 +175,8 @@ def stack_details_page():
             parameters=parameters,
         )
         st.session_state["current_stack_id"] = stack_id
+        st.session_state["current_page"] = "CEMS Instrument Details"
         st.success("Stack details submitted successfully!")
-        set_page("CEMS Instrument Details")
 
 
 def add_stack(user_id, **stack_details):
@@ -209,9 +209,7 @@ def cems_instrument_details_page():
     )
 
     stack_id = st.session_state.get("current_stack_id", "")
-    parameter = st.selectbox(
-        "Select parameter for this instrument", ["PM2.5", "SOx", "NOx"]
-    )
+    parameter = st.text_input("Enter parameter for this instrument (e.g., PM2.5, SOx)")
     measuring_range_low = st.number_input("Measuring Range Low", min_value=0.0)
     measuring_range_high = st.number_input("Measuring Range High", min_value=0.0)
 
@@ -227,9 +225,10 @@ def cems_instrument_details_page():
         # Move to the next stack or complete registration
         if st.session_state["current_stack"] < st.session_state["num_stacks"]:
             st.session_state["current_stack"] += 1
-            set_page("Stack Details")
+            st.session_state["current_page"] = "Stack Details"
         else:
-            set_page("Registration Complete")
+            st.session_state["current_page"] = "Registration Complete"
+            st.success("All details submitted. Registration is complete.")
 
 
 def add_cems_instrument(stack_id, **cems_details):
