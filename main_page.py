@@ -123,7 +123,7 @@ create_database_tables()
 # Streamlit App - Navigation and Pages
 st.title("🌿 Industry Registration Portal")
 
-# Login Page
+# Display pages based on the current page state
 if st.session_state["current_page"] == "Login":
     st.header("Welcome! Please log in or sign up to continue.")
     phone_number = st.text_input("Enter your phone number", value="", max_chars=10)
@@ -131,27 +131,19 @@ if st.session_state["current_page"] == "Login":
 
     if st.button("Send OTP", key="send_otp"):
         if phone_number:
-            otp = random.randint(1000, 9999)
-            st.session_state["otp"] = otp
+            st.session_state["otp"] = random.randint(1000, 9999)
             st.session_state["otp_sent"] = True
-            st.success(f"OTP sent to {phone_number} (for testing, the OTP is {otp})")
-        else:
-            st.error("Please enter a valid phone number.")
+            st.success(
+                f"OTP sent to {phone_number} (for testing, the OTP is {st.session_state['otp']})"
+            )
 
     if st.session_state["otp_sent"]:
         user_otp = st.text_input("Enter the OTP you received", value="", max_chars=4)
         if st.button("Verify OTP", key="verify_otp"):
-            if user_otp == str(st.session_state["otp"]):
-                st.session_state["otp_verified"] = True
-                user_id = add_user(phone_number)
-                st.session_state["user_id"] = user_id
-                st.session_state["current_page"] = "Industry Details"
-                st.success("OTP Verified!")
-            else:
-                st.error("Incorrect OTP. Please try again.")
+            verify_otp(user_otp)
 
 # Display Industry Details form if OTP is verified
-if st.session_state["current_page"] == "Industry Details":
+elif st.session_state["current_page"] == "Industry Details":
     st.header("Industry Basic Details")
     user_id = st.session_state.get("user_id", "")
 
@@ -160,19 +152,8 @@ if st.session_state["current_page"] == "Industry Details":
     num_stacks = st.number_input("Number of Stacks", min_value=1)
 
     if st.button("Submit Industry Details", key="submit_industry"):
-        # Update user details in the database
-        conn = get_database_connection()
-        c = conn.cursor()
-        c.execute(
-            """
-            UPDATE users SET industry_category = ?, state_ocmms_id = ?, num_stacks = ? WHERE user_id = ?
-        """,
-            (industry_category, state_ocmms_id, num_stacks, user_id),
-        )
-        conn.commit()
-        conn.close()
-
+        update_user_details(user_id, industry_category, state_ocmms_id, num_stacks)
         st.session_state["num_stacks"] = num_stacks
-        st.session_state["current_stack"] = 1
         st.session_state["current_page"] = "Stack Details"
         st.success("Industry details submitted successfully!")
+        st.experimental_rerun()  # Refresh to show the next page
