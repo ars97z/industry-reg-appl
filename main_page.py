@@ -90,20 +90,6 @@ def add_user(phone_number):
     return user_id
 
 
-# Update user details after form submission
-def update_user_details(user_id, industry_category, state_ocmms_id, num_stacks):
-    conn = get_database_connection()
-    c = conn.cursor()
-    c.execute(
-        """UPDATE users 
-                 SET industry_category=?, state_ocmms_id=?, num_stacks=?
-                 WHERE user_id=?""",
-        (industry_category, state_ocmms_id, num_stacks, user_id),
-    )
-    conn.commit()
-    conn.close()
-
-
 # Initialize session states
 if "current_page" not in st.session_state:
     st.session_state["current_page"] = "Login"
@@ -111,6 +97,8 @@ if "otp_sent" not in st.session_state:
     st.session_state["otp_sent"] = False
 if "otp_verified" not in st.session_state:
     st.session_state["otp_verified"] = False
+if "otp_verified_once" not in st.session_state:
+    st.session_state["otp_verified_once"] = False
 if "submit_industry" not in st.session_state:
     st.session_state["submit_industry"] = False
 if "submit_stack" not in st.session_state:
@@ -129,7 +117,10 @@ if st.session_state["current_page"] == "Login":
     phone_number = st.text_input("Enter your phone number", value="", max_chars=10)
     st.session_state["phone_number"] = phone_number
 
-    if st.button("Send OTP", key="send_otp"):
+    if (
+        st.button("Send OTP", key="send_otp")
+        and not st.session_state["otp_verified_once"]
+    ):
         if phone_number:
             st.session_state["otp"] = random.randint(1000, 9999)
             st.session_state["otp_sent"] = True
@@ -137,7 +128,7 @@ if st.session_state["current_page"] == "Login":
                 f"OTP sent to {phone_number} (for testing, the OTP is {st.session_state['otp']})"
             )
 
-    if st.session_state["otp_sent"]:
+    if st.session_state["otp_sent"] and not st.session_state["otp_verified_once"]:
         user_otp = st.text_input("Enter the OTP you received", value="", max_chars=4)
         if st.button("Verify OTP", key="verify_otp"):
             verify_otp(user_otp)
@@ -152,8 +143,23 @@ elif st.session_state["current_page"] == "Industry Details":
     num_stacks = st.number_input("Number of Stacks", min_value=1)
 
     if st.button("Submit Industry Details", key="submit_industry"):
+        # Update user details in the database
         update_user_details(user_id, industry_category, state_ocmms_id, num_stacks)
         st.session_state["num_stacks"] = num_stacks
         st.session_state["current_page"] = "Stack Details"
         st.success("Industry details submitted successfully!")
         st.experimental_rerun()  # Refresh to show the next page
+
+
+# Update user details after form submission
+def update_user_details(user_id, industry_category, state_ocmms_id, num_stacks):
+    conn = get_database_connection()
+    c = conn.cursor()
+    c.execute(
+        """UPDATE users 
+                 SET industry_category=?, state_ocmms_id=?, num_stacks=?
+                 WHERE user_id=?""",
+        (industry_category, state_ocmms_id, num_stacks, user_id),
+    )
+    conn.commit()
+    conn.close()
