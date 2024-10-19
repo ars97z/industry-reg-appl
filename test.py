@@ -7,7 +7,7 @@ import uuid
 # Database connection and setup
 def get_database_connection():
     conn = sqlitecloud.connect(
-        "sqlitecloud://cxup3m3knz.sqlite.cloud:8860/industry_reg?apikey=ogQNaPUaDxZTJiTQEXlZGJB6zFAYqAkZdmzvJ3UpPrM"
+        "sqlitecloud://cxup3m3knz.sqlite.cloud:8860/industry_reg?apikey=BODYl6TBlYCPRh8BciJjTFGiPVQwTjlZOz1dA0ns9fk"
     )
     return conn
 
@@ -177,11 +177,7 @@ def stack_details_page():
             parameters=parameters,
         )
         st.session_state["current_stack_id"] = stack_id
-        if st.session_state["current_stack"] < st.session_state["num_stacks"]:
-            st.session_state["current_stack"] += 1
-            st.session_state["current_page"] = "Stack Details"
-        else:
-            st.session_state["current_page"] = "CEMS Instrument Details"
+        st.session_state["current_page"] = "CEMS Instrument Details"
 
     st.button("Submit Stack Details", on_click=submit_stack_details)
 
@@ -190,8 +186,7 @@ def add_stack(user_id, **stack_details):
     conn = get_database_connection()
     c = conn.cursor()
     c.execute(
-        """INSERT INTO stacks (user_id, process_attached, stack_condition, 
-                               stack_type, cems_installed, parameters) 
+        """INSERT INTO stacks (user_id, process_attached, stack_condition, stack_type, cems_installed, parameters) 
            VALUES (?, ?, ?, ?, ?, ?)""",
         (
             user_id,
@@ -212,7 +207,7 @@ def add_stack(user_id, **stack_details):
 def cems_instrument_details_page():
     st.title("🌿 Industry Registration Portal")
     st.subheader(
-        f"CEMS Instrument Details for Stack {st.session_state['current_stack']}"
+        f"CEMS Instrument Details for Stack {st.session_state['current_stack']} of {st.session_state['num_stacks']}"
     )
 
     stack_id = st.session_state.get("current_stack_id", "")
@@ -228,9 +223,11 @@ def cems_instrument_details_page():
             measuring_range_high=measuring_range_high,
         )
 
-        # Move to the next stack or complete registration
-        if st.session_state["current_stack"] < st.session_state["num_stacks"]:
-            st.session_state["current_stack"] += 1
+        # Increment the current stack count
+        st.session_state["current_stack"] += 1
+
+        # If there are more stacks, go back to "Stack Details" for the next stack
+        if st.session_state["current_stack"] <= st.session_state["num_stacks"]:
             st.session_state["current_page"] = "Stack Details"
         else:
             st.session_state["current_page"] = "Registration Complete"
@@ -271,9 +268,15 @@ elif (
     and st.session_state["otp_verified"]
 ):
     industry_details_page()
-elif st.session_state["current_page"] == "Stack Details":
+elif (
+    st.session_state["current_page"] == "Stack Details"
+    and st.session_state["current_stack"] <= st.session_state["num_stacks"]
+):
     stack_details_page()
-elif st.session_state["current_page"] == "CEMS Instrument Details":
+elif (
+    st.session_state["current_page"] == "CEMS Instrument Details"
+    and st.session_state["current_stack"] <= st.session_state["num_stacks"]
+):
     cems_instrument_details_page()
 elif st.session_state["current_page"] == "Registration Complete":
     registration_complete_page()
